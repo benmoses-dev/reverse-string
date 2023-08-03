@@ -1,4 +1,5 @@
 use rand::Rng;
+use std::collections::HashMap;
 use std::io;
 use std::str;
 
@@ -52,7 +53,7 @@ fn reverse_string() {
         first = next;
     }
 
-    let text: &str = str::from_utf8(text).unwrap();
+    let text: &str = str::from_utf8(text).unwrap_or_default();
     println!("{}", text);
 }
 
@@ -102,6 +103,17 @@ fn two_sum() {
         break;
     }
 
-    let num_list: String = num_list.into_iter().map(|i| i.to_string()).collect::<String>();
-    println!("The vector of numbers is {} and the sum is {}", num_list, number);
+    let mut tried: HashMap<i32, i32> = HashMap::new();
+
+    for i in 0..num_list.len() {
+        let current: i32 = num_list[i];
+        let other = number - current;
+
+        if tried.contains_key(&other) {
+            println!("{} and {} make {}", other.to_string(), current.to_string(), number.to_string());
+            return;
+        } else {
+            tried.insert(current, other);
+        }
+    }
 }
