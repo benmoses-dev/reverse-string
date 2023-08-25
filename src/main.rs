@@ -1,60 +1,97 @@
-use rand::Rng;
 use std::collections::HashMap;
-use std::io;
+use std::io::Stdin;
+use std::io::{self, Write};
 use std::str;
 
 fn main() {
-    let random_number: u32 = rand::thread_rng().gen_range(1..3);
+    let stdin: Stdin = io::stdin();
+    let mut buffer: String = String::new();
 
-    println!("Welcome to reverse string!");
-    println!("The random number is {}", random_number);
-
-    match random_number {
-        1 => reverse_string(),
-        2 => two_sum(),
-        3 => println!("Well done!"),
-        _ => println!("Wildcard"),
+    loop {
+        let choice: u8 = get_choice(&mut buffer, &stdin);
+        match choice {
+            1 => reverse_string(&stdin),
+            2 => two_sum(),
+            _ => {
+                println!("Please make a valid choice\n");
+                continue;
+            }
+        }
+        break;
     }
 }
 
-fn reverse_string() {
-    let stdin = io::stdin();
+fn get_choice(buffer: &mut String, stdin: &Stdin) -> u8 {
+    loop {
+        buffer.clear();
+        read_choice(buffer, stdin);
+        let choice: u8 = match buffer.trim().parse() {
+            Ok(value) => value,
+            Err(_) => {
+                println!("Failed to parse int. Try again!\n");
+                continue;
+            }
+        };
+        return choice;
+    }
+}
 
-    println!("Enter a string of text:");
+fn read_choice(buffer: &mut String, stdin: &Stdin) {
+    println!("Enter your choice of algorithm:");
+    println!("1: Reverse String");
+    println!("2: Two Sum");
+    print!("Choice > ");
+    io::stdout().flush().expect("Could not flush stdout!");
+    match stdin.read_line(buffer) {
+        Ok(n) => {
+            println!("\nRead {n} bytes");
+            println!("You chose {}\n", buffer.trim());
+        }
+        Err(err) => {
+            println!("Error: {err}");
+        }
+    }
+}
 
-    let mut text: String = String::new();
-    stdin.read_line(&mut text).expect("Failed to read line");
-    text = text.trim().to_owned();
+fn reverse_string(stdin: &Stdin) {
+    println!("Welcome to reverse string!");
+    print!("Enter a string of text > ");
+    io::stdout().flush().expect("Could not flush stdout!");
 
-    println!("Carrying out a very quick, potentially unsafe, in-place reversal of your text:");
+    let mut buffer: String = String::new();
+    stdin.read_line(&mut buffer).expect("Failed to read line");
+    buffer = buffer.trim_end().to_owned();
 
-    let text: &mut [u8] = unsafe { text.as_bytes_mut() };
-
+    // Convert to byte array and create pointers
+    let bytes: &mut [u8] = unsafe { buffer.as_bytes_mut() };
     let mut first: usize = 0;
     let mut last: usize = 0;
 
-    while last < text.len() && text[last].is_ascii() {
-        while last < text.len() && text[last].is_ascii() && text[last] != b' ' {
-            last = last + 1;
+    while last < bytes.len() {
+        // Find the first word
+        while last < bytes.len() && bytes[last] != b' ' {
+            last += 1;
         }
 
         let next: usize = last + 1;
-        last = last - 1;
+        last -= 1;
 
+        // Reverse the word
         while first < last {
-            let temp: u8 = text[first];
-            text[first] = text[last];
-            text[last] = temp;
-            first = first + 1;
-            last = last - 1;
+            let temp: u8 = bytes[first];
+            bytes[first] = bytes[last];
+            bytes[last] = temp;
+            first += 1;
+            last -= 1;
         }
 
+        // Reset at beginning of next word
         last = next;
         first = next;
     }
 
-    let text: &str = str::from_utf8(text).unwrap_or_default();
-    println!("{}", text);
+    let text: &str = unsafe { str::from_utf8_unchecked(bytes) };
+    println!("\n{text}");
 }
 
 fn two_sum() {
@@ -110,7 +147,12 @@ fn two_sum() {
         let other = number - current;
 
         if tried.contains_key(&other) {
-            println!("{} and {} make {}", other.to_string(), current.to_string(), number.to_string());
+            println!(
+                "{} and {} make {}",
+                other.to_string(),
+                current.to_string(),
+                number.to_string()
+            );
             return;
         } else {
             tried.insert(current, other);
