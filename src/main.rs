@@ -1,7 +1,8 @@
-use std::collections::HashMap;
 use std::io::Stdin;
 use std::io::{self, Write};
-use std::str;
+use std::iter::Peekable;
+use std::str::{self, Chars};
+use std::time::Instant;
 
 fn main() {
     let stdin: Stdin = io::stdin();
@@ -10,8 +11,14 @@ fn main() {
     loop {
         let choice: u8 = get_choice(&mut buffer, &stdin);
         match choice {
-            1 => reverse_string(&stdin),
-            2 => two_sum(),
+            1 => {
+                println!("You chose the safe algorithm\n");
+                reverse_string(&stdin);
+            }
+            2 => {
+                println!("You chose the unsafe algorithm. Ensure the text is raw ASCII\n");
+                reverse_string_unsafe(&stdin);
+            }
             _ => {
                 println!("Please make a valid choice\n");
                 continue;
@@ -28,7 +35,7 @@ fn get_choice(buffer: &mut String, stdin: &Stdin) -> u8 {
         let choice: u8 = match buffer.trim().parse() {
             Ok(value) => value,
             Err(_) => {
-                println!("Failed to parse int. Try again!\n");
+                println!("Failed to parse as int. Try again!\n");
                 continue;
             }
         };
@@ -36,126 +43,111 @@ fn get_choice(buffer: &mut String, stdin: &Stdin) -> u8 {
     }
 }
 
-fn read_choice(buffer: &mut String, stdin: &Stdin) {
+fn read_choice(buffer: &mut String, stdin: &Stdin) -> () {
     println!("Enter your choice of algorithm:");
-    println!("1: Reverse String");
-    println!("2: Two Sum");
+    println!("1: Safe");
+    println!("2: Unsafe");
     print!("Choice > ");
     io::stdout().flush().expect("Could not flush stdout!");
-    match stdin.read_line(buffer) {
-        Ok(n) => {
-            println!("\nRead {n} bytes");
-            println!("You chose {}\n", buffer.trim());
-        }
-        Err(err) => {
-            println!("Error: {err}");
-        }
-    }
+    stdin.read_line(buffer).expect("Error reading line!");
 }
 
-fn reverse_string(stdin: &Stdin) {
-    println!("Welcome to reverse string!");
+fn reverse_string_unsafe(stdin: &Stdin) {
     print!("Enter a string of text > ");
     io::stdout().flush().expect("Could not flush stdout!");
 
     let mut buffer: String = String::new();
     stdin.read_line(&mut buffer).expect("Failed to read line");
     buffer = buffer.trim_end().to_owned();
+    let now = Instant::now();
 
     // Convert to byte array and create pointers
     let bytes: &mut [u8] = unsafe { buffer.as_bytes_mut() };
-    let mut first: usize = 0;
-    let mut last: usize = 0;
+    let mut head: usize = 0;
+    let mut tail: usize = 0;
+    let punctuation: [u8; 7] = [b' ', b'.', b',', b'!', b'?', b';', b':'];
 
-    while last < bytes.len() {
-        // Find the first word
-        while last < bytes.len() && bytes[last] != b' ' {
-            last += 1;
+    while head < bytes.len() {
+        // Find the next word
+        while head < bytes.len() && !punctuation.contains(&bytes[head]) {
+            head += 1;
         }
 
-        let next: usize = last + 1;
-        last -= 1;
+        // End of word
+        let mut end: usize = head - 1;
+
+        while head < bytes.len() && punctuation.contains(&bytes[head]) {
+            head += 1;
+        }
 
         // Reverse the word
-        while first < last {
-            let temp: u8 = bytes[first];
-            bytes[first] = bytes[last];
-            bytes[last] = temp;
-            first += 1;
-            last -= 1;
+        while tail < end {
+            let temp: u8 = bytes[tail];
+            bytes[tail] = bytes[end];
+            bytes[end] = temp;
+            tail += 1;
+            end -= 1;
         }
 
-        // Reset at beginning of next word
-        last = next;
-        first = next;
+        // Set tail to the beginning of next word
+        tail = head;
     }
 
     let text: &str = unsafe { str::from_utf8_unchecked(bytes) };
-    println!("\n{text}");
+    let elapsed = now.elapsed();
+    println!("\nYour text is > {text}");
+    println!("The unsafe algorithm took {} seconds", elapsed.as_secs_f64());
 }
 
-fn two_sum() {
-    let stdin = io::stdin();
+fn reverse_string(stdin: &Stdin) {
+    print!("Enter a string of text > ");
+    io::stdout().flush().expect("Could not flush stdout!");
 
-    println!(
-        "Enter as many numbers as you would like. Enter a blank line to go to the next stage..."
-    );
+    let mut buffer: String = String::new();
+    stdin.read_line(&mut buffer).expect("Failed to read line");
+    buffer = buffer.trim_end().to_owned();
+    let now = Instant::now();
 
-    let mut num_list: Vec<i32> = Vec::new();
-
-    loop {
-        let mut input: String = String::new();
-
-        stdin.read_line(&mut input).expect("Failed to read line");
-
-        if input == "\n" {
-            break;
-        }
-
-        let number: i32 = match input.trim().parse() {
-            Ok(num) => num,
-            Err(_) => {
-                println!("You need to enter a valid number or a blank line");
-                continue;
-            }
-        };
-        num_list.push(number);
-    }
-
-    println!("Enter a single number that is the sum of two of the previous numbers");
-
-    let number: i32;
+    let mut buf_iter: Peekable<Chars<'_>> = buffer.chars().peekable();
+    let punctuation: [char; 7] = [' ', '.', ',', '!', '?', ';', ':'];
+    let mut peeked: &char;
+    let mut next: char;
+    let mut text: String = String::new();
 
     loop {
-        let mut input: String = String::new();
-        stdin.read_line(&mut input).expect("Failed to read line");
-
-        number = match input.trim().parse() {
-            Ok(num) => num,
-            Err(_) => {
-                println!("You need to enter a valid number");
-                continue;
+        peeked = match buf_iter.peek() {
+            Some(val) => val,
+            None => {
+                break;
             }
         };
-        break;
-    }
 
-    let mut tried: HashMap<i32, i32> = HashMap::new();
-
-    for i in 0..num_list.len() {
-        let current: i32 = num_list[i];
-        let other = number - current;
-
-        if tried.contains_key(&other) {
-            println!(
-                "{} and {} make {}",
-                other.to_string(),
-                current.to_string(),
-                number.to_string()
-            );
-            return;
-        } else {
-            tried.insert(current, other);
+        if punctuation.contains(peeked) {
+            // Add the punctuation mark to the result
+            next = buf_iter.next().unwrap();
+            text.push(next);
+            continue;
         }
+
+        // We are at the start of the next word
+        let mut temp: String = String::new();
+        loop {
+            peeked = match buf_iter.peek() {
+                Some(val) => val,
+                None => {
+                    break;
+                }
+            };
+            if punctuation.contains(peeked) {
+                break;
+            }
+            next = buf_iter.next().unwrap();
+            temp.push(next);
+        }
+        temp = temp.chars().rev().collect();
+        text.push_str(&temp);
     }
+    let elapsed = now.elapsed();
+    println!("\nYour text is > {text}");
+    println!("The safe algorithm took {} seconds", elapsed.as_secs_f64());
 }
