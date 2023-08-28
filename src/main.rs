@@ -95,14 +95,12 @@ fn reverse_string(buffer: &mut String) {
                 break;
             }
         };
-
         if punctuation.contains(peeked) {
             // Add the punctuation mark to the result
             next = buf_iter.next().unwrap();
             text.push(next);
             continue;
         }
-
         // We are at the start of the next word
         let mut temp: String = String::new();
         loop {
@@ -121,9 +119,14 @@ fn reverse_string(buffer: &mut String) {
         temp = temp.chars().rev().collect();
         text.push_str(&temp);
     }
+
     let elapsed = now.elapsed();
+
     println!("\nYour text is > {text}");
-    println!("The safe algorithm took {} nanoseconds", elapsed.as_nanos());
+    println!(
+        "The safe algorithm took {} seconds",
+        elapsed.as_secs_f64()
+    );
 }
 
 fn reverse_string_unsafe(buffer: &mut String) {
@@ -140,14 +143,11 @@ fn reverse_string_unsafe(buffer: &mut String) {
         while head < bytes.len() && !punctuation.contains(&bytes[head]) {
             head += 1;
         }
-
         // End of word
-        let mut end: usize = head - 1;
-
+        let mut end: usize = head.saturating_sub(1);
         while head < bytes.len() && punctuation.contains(&bytes[head]) {
             head += 1;
         }
-
         // Reverse the word
         while tail < end {
             let temp: u8 = bytes[tail];
@@ -156,15 +156,16 @@ fn reverse_string_unsafe(buffer: &mut String) {
             tail += 1;
             end -= 1;
         }
-
         // Set tail to the beginning of next word
         tail = head;
     }
+
     let elapsed = now.elapsed();
+
     println!("\nYour text is > {buffer}");
     println!(
-        "The unsafe algorithm took {} nanoseconds",
-        elapsed.as_nanos()
+        "The unsafe algorithm took {} seconds",
+        elapsed.as_secs_f64()
     );
 }
 
@@ -183,15 +184,12 @@ fn reverse_string_pointers(buffer: &mut String) {
         while head <= last && !punctuation.contains(unsafe { &*head }) {
             head = unsafe { head.offset(1) };
         }
-
         // End of word
         let mut end: *mut u8 = unsafe { head.offset(-1) };
-
         // Go to beginning of next word
         while head <= last && punctuation.contains(unsafe { &*head }) {
             head = unsafe { head.offset(1) };
         }
-
         // Reverse the word
         while tail < end {
             let temp: u8 = unsafe { *tail };
@@ -200,15 +198,16 @@ fn reverse_string_pointers(buffer: &mut String) {
             tail = unsafe { tail.offset(1) };
             end = unsafe { end.offset(-1) };
         }
-
         // Set tail to the beginning of next word
         tail = head;
     }
+
     let elapsed = now.elapsed();
+
     println!("\nYour text is > {buffer}");
     println!(
-        "The (very) unsafe pointer algorithm took {} nanoseconds",
-        elapsed.as_nanos()
+        "The (very) unsafe pointer algorithm took {} seconds",
+        elapsed.as_secs_f64()
     );
 }
 
@@ -216,7 +215,19 @@ fn benchmark(buffer: &String) {
     let mut one: String = buffer.to_owned();
     let mut two: String = buffer.to_owned();
     let mut three: String = buffer.to_owned();
-    reverse_string(&mut one);
-    reverse_string_unsafe(&mut two);
-    reverse_string_pointers(&mut three);
+
+    for _ in 1..=6 {
+        reverse_string(&mut one);
+        one = buffer.to_owned();
+    }
+
+    for _ in 1..=6 {
+        reverse_string_unsafe(&mut two);
+        two = buffer.to_owned();
+    }
+
+    for _ in 1..=6 {
+        reverse_string_pointers(&mut three);
+        three = buffer.to_owned();
+    }
 }
