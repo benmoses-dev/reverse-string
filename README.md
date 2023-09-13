@@ -1,2 +1,2 @@
 # reverse-string
-simple program that randomly selects from a list of algorithms
+simple program that efficiently reverses every word in a string
